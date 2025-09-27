@@ -1,0 +1,5 @@
+# 1. Run the TypeScript compiler to check for type errors.
+pnpm tsc --noEmit
+
+# 2. If types are valid, run lint-staged on the staged files.
+npx lint-staged
