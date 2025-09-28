@@ -51,6 +51,8 @@ export async function updateSession(request: NextRequest) {
       .maybeSingle();
     profile = profileData as Profile | null;
   }
+  console.log("user", user);
+  console.log("profile", profile);
 
   // Handle routing logic based on user and profile existence
   if (user && profile) {
@@ -92,10 +94,15 @@ export async function updateSession(request: NextRequest) {
       return NextResponse.redirect(url);
     }
   } else if (!user) {
-    // No user - redirect to home
-    const url = request.nextUrl.clone();
-    url.pathname = "/";
-    return NextResponse.redirect(url);
+    // No user - redirect to home (but allow access to auth paths)
+    if (
+      request.nextUrl.pathname !== "/" &&
+      !request.nextUrl.pathname.startsWith("/auth")
+    ) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/";
+      return NextResponse.redirect(url);
+    }
   }
 
   // IMPORTANT: You *must* return the supabaseResponse object as it is.
