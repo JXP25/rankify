@@ -9,7 +9,10 @@ import {
   type PropsWithChildren,
   useCallback,
   useContext,
+  useState,
 } from "react";
+import { createClient } from "@/lib/supabase/client";
+import { useRouter } from "next/navigation";
 
 export const formatBytes = (
   bytes: number,
@@ -27,6 +30,51 @@ export const formatBytes = (
       ? sizes.indexOf(size)
       : Math.floor(Math.log(bytes) / Math.log(k));
   return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + " " + sizes[i];
+};
+
+// Hook to check authentication and redirect if needed
+const useAuthCheck = () => {
+  const [isChecking, setIsChecking] = useState(false);
+  const router = useRouter();
+
+  const checkAuthAndRedirect = useCallback(async () => {
+    setIsChecking(true);
+    try {
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) {
+        // No user, redirect to sign up
+        router.push("/auth/sign-up");
+        return false;
+      }
+
+      // Check if user has a profile
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("id", user.id)
+        .single();
+
+      if (!profile) {
+        // User exists but no profile, redirect to onboarding
+        router.push("/onboarding");
+        return false;
+      }
+
+      return true; // User is authenticated and has profile
+    } catch (error) {
+      console.error("Auth check failed:", error);
+      router.push("/auth/sign-up");
+      return false;
+    } finally {
+      setIsChecking(false);
+    }
+  }, [router]);
+
+  return { checkAuthAndRedirect, isChecking };
 };
 
 type DropzoneContextType = Omit<
@@ -88,6 +136,7 @@ const DropzoneContent = ({ className }: { className?: string }) => {
     isSuccess,
   } = useDropzoneContext();
 
+  const { checkAuthAndRedirect, isChecking } = useAuthCheck();
   const exceedMaxFiles = files.length > maxFiles;
 
   const handleRemoveFile = useCallback(
@@ -96,6 +145,13 @@ const DropzoneContent = ({ className }: { className?: string }) => {
     },
     [files, setFiles],
   );
+
+  const handleUpload = useCallback(async () => {
+    const isAuthenticated = await checkAuthAndRedirect();
+    if (isAuthenticated) {
+      onUpload();
+    }
+  }, [checkAuthAndRedirect, onUpload]);
 
   if (isSuccess) {
     return (
@@ -147,7 +203,10 @@ const DropzoneContent = ({ className }: { className?: string }) => {
                   {file.errors
                     .map((e) =>
                       e.message.startsWith("File is larger than")
-                        ? `File is larger than ${formatBytes(maxFileSize, 2)} (Size: ${formatBytes(file.size, 2)})`
+                        ? `File is larger than ${formatBytes(
+                            maxFileSize,
+                            2,
+                          )} (Size: ${formatBytes(file.size, 2)})`
                         : e.message,
                     )
                     .join(", ")}
@@ -195,13 +254,22 @@ const DropzoneContent = ({ className }: { className?: string }) => {
         <div className="mt-2">
           <Button
             variant="outline"
-            onClick={onUpload}
-            disabled={files.some((file) => file.errors.length !== 0) || loading}
+            onClick={handleUpload}
+            disabled={
+              files.some((file) => file.errors.length !== 0) ||
+              loading ||
+              isChecking
+            }
           >
             {loading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Uploading...
+              </>
+            ) : isChecking ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Checking...
               </>
             ) : (
               <>Upload files</>

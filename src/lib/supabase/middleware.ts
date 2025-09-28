@@ -3,6 +3,21 @@ import { NextResponse, type NextRequest } from "next/server";
 import { Profile } from "@/types/global";
 
 export async function updateSession(request: NextRequest) {
+  const pathname = request.nextUrl.pathname;
+  if (
+    pathname.startsWith("/_next/") ||
+    pathname.startsWith("/favicon.ico") ||
+    pathname.endsWith(".png") ||
+    pathname.endsWith(".jpg") ||
+    pathname.endsWith(".jpeg") ||
+    pathname.endsWith(".gif") ||
+    pathname.endsWith(".svg") ||
+    pathname.endsWith(".ico") ||
+    pathname.endsWith(".webp")
+  ) {
+    return NextResponse.next({ request });
+  }
+
   let supabaseResponse = NextResponse.next({
     request,
   });
@@ -51,8 +66,6 @@ export async function updateSession(request: NextRequest) {
       .maybeSingle();
     profile = profileData as Profile | null;
   }
-  console.log("user", user);
-  console.log("profile", profile);
 
   // Handle routing logic based on user and profile existence
   if (user && profile) {
