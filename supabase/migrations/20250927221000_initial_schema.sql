@@ -47,10 +47,8 @@ ON public.profiles FOR SELECT USING (auth.uid() = id);
 CREATE POLICY "Users can update their own profile."
 ON public.profiles FOR UPDATE USING (auth.uid() = id);
 
-CREATE POLICY "Admins can view all profiles."
-ON public.profiles FOR SELECT USING (
-  (SELECT role FROM public.profiles WHERE id = auth.uid()) = 'REVIEWER'::role
-);
+CREATE POLICY "Users can insert their own profile."
+ON public.profiles FOR INSERT WITH CHECK (auth.uid() = id);
 
 
 -- 5. CREATE RLS POLICIES FOR 'resumes' TABLE

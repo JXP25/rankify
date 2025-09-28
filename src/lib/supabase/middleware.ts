@@ -85,10 +85,12 @@ export async function updateSession(request: NextRequest) {
       return NextResponse.redirect(url);
     }
   } else if (user && !profile) {
-    // Only user exists - redirect to onboarding
-    const url = request.nextUrl.clone();
-    url.pathname = "/onboarding";
-    return NextResponse.redirect(url);
+    // Only user exists - redirect to onboarding (but not if already on onboarding)
+    if (request.nextUrl.pathname !== "/onboarding") {
+      const url = request.nextUrl.clone();
+      url.pathname = "/onboarding";
+      return NextResponse.redirect(url);
+    }
   } else if (!user) {
     // No user - redirect to home
     const url = request.nextUrl.clone();
