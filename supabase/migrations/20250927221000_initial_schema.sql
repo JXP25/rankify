@@ -23,6 +23,7 @@ COMMENT ON TABLE public.profiles IS 'Public profile information for each user, l
 CREATE TABLE public.resumes (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
     storage_path TEXT NOT NULL,
     status public.resume_status NOT NULL DEFAULT 'PENDING'::resume_status,
     notes TEXT,
@@ -102,13 +103,13 @@ TO authenticated
 WITH CHECK (bucket_id = 'resumes');
 
 -- Policy: Allow users to view their own uploaded resumes.
--- This policy relies on the file path being in the format: {user_id}/{file_name}.
--- Your frontend code must enforce this structure when uploading.
+-- This policy relies on the file path being in the format: {uploads}/{user_id}/{timestamp}.pdf
+-- Files are stored with timestamp filenames for simplicity and uniqueness.
 CREATE POLICY "Users can view their own resumes."
 ON storage.objects FOR SELECT
 TO authenticated
 USING (
-  bucket_id = 'resumes' AND (storage.foldername(name))[1] = auth.uid()::text
+  bucket_id = 'resumes' AND (storage.foldername(name))[2] = auth.uid()::text
 );
 
 -- Policy: Allow admins to view any resume.

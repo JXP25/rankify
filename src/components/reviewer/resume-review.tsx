@@ -16,6 +16,8 @@ import { FileText, Save, Download } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useState, useEffect } from "react";
 import { Resume, ResumeStatus } from "@/types/global";
+import { PDFPreview } from "./pdf-preview";
+import { toast } from "sonner";
 
 interface ResumeWithProfile extends Resume {
   profiles?: {
@@ -66,7 +68,7 @@ export const ResumeReview = ({
 
       // Validate score
       if (scoreValue !== null && (scoreValue < 0 || scoreValue > 100)) {
-        alert("Score must be between 0 and 100");
+        toast.error("Score must be between 0 and 100");
         setSaving(false);
         return;
       }
@@ -92,14 +94,14 @@ export const ResumeReview = ({
 
       if (error) {
         console.error("Error updating resume:", error);
-        alert("Failed to save review");
+        toast.error("Failed to save review");
       } else if (data) {
         onReviewUpdated(data);
-        alert("Review saved successfully!");
+        toast.success("Review saved successfully!");
       }
     } catch (error) {
       console.error("Error saving review:", error);
-      alert("Failed to save review");
+      toast.error("Failed to save review");
     } finally {
       setSaving(false);
     }
@@ -113,7 +115,7 @@ export const ResumeReview = ({
 
       if (error) {
         console.error("Error downloading file:", error);
-        alert("Failed to download resume");
+        toast.error("Failed to download resume");
         return;
       }
 
@@ -128,7 +130,7 @@ export const ResumeReview = ({
       URL.revokeObjectURL(url);
     } catch (error) {
       console.error("Error downloading resume:", error);
-      alert("Failed to download resume");
+      toast.error("Failed to download resume");
     }
   };
 
@@ -141,24 +143,13 @@ export const ResumeReview = ({
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* Resume Info */}
-        <div className="bg-gray-50 rounded-lg p-4">
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="font-medium text-gray-900">
-              {resume.profiles?.full_name || "Unknown User"}
-            </h3>
-            <Button variant="outline" size="sm" onClick={handleDownload}>
-              <Download className="h-4 w-4 mr-2" />
-              Download
-            </Button>
-          </div>
-          <p className="text-sm text-gray-600">
-            {resume.storage_path.split("/").pop()?.replace(/^\d+_/, "") ||
-              "Resume"}
-          </p>
-          <p className="text-xs text-gray-500 mt-1">
-            Submitted: {new Date(resume.created_at).toLocaleDateString()}
-          </p>
+        {/* PDF Preview */}
+        <div className="space-y-4">
+          <PDFPreview
+            storagePath={resume.storage_path}
+            fileName={resume.name}
+            submittedDate={new Date(resume.created_at).toLocaleDateString()}
+          />
         </div>
 
         {/* Review Form */}

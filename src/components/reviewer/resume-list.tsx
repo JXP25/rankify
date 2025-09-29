@@ -26,6 +26,19 @@ export const ReviewerResumeList = ({
   const [updatingIds, setUpdatingIds] = useState<Set<string>>(new Set());
   const supabase = createClient();
 
+  const handleViewResume = async (resume: ResumeWithProfile) => {
+    const { data, error } = await supabase.storage
+      .from("resumes")
+      .createSignedUrl(resume.storage_path, 3600); // 1 hour expiry
+
+    if (error) {
+      console.error("Error creating signed URL:", error);
+      return;
+    }
+
+    window.open(data.signedUrl, "_blank");
+  };
+
   useEffect(() => {
     const fetchResumes = async () => {
       try {
@@ -203,9 +216,16 @@ export const ReviewerResumeList = ({
                   )}
                   <div className="flex items-start justify-between">
                     <div className="flex items-start space-x-3">
-                      <div className="flex-shrink-0">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleViewResume(resume);
+                        }}
+                        className="flex-shrink-0 p-1 hover:bg-blue-100 rounded transition-colors"
+                        title="View Resume"
+                      >
                         <FileText className="h-8 w-8 text-blue-500" />
-                      </div>
+                      </button>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
                           <User className="h-4 w-4 text-gray-400" />
@@ -214,10 +234,7 @@ export const ReviewerResumeList = ({
                           </span>
                         </div>
                         <h3 className="text-sm text-gray-700 truncate">
-                          {resume.storage_path
-                            .split("/")
-                            .pop()
-                            ?.replace(/^\d+_/, "") || "Resume"}
+                          {resume.name}
                         </h3>
                         <div className="flex items-center mt-1 space-x-4 text-xs text-gray-500">
                           <div className="flex items-center">

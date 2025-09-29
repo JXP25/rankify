@@ -23,6 +23,7 @@ export interface Profile {
 export interface Resume {
   id: string;
   user_id: string;
+  name: string;
   storage_path: string;
   status: ResumeStatus;
   notes?: string | null;

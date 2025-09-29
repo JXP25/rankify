@@ -6,11 +6,32 @@ import { createClient } from "@/lib/supabase/client";
 import { useEffect, useState } from "react";
 import { Resume } from "@/types/global";
 
-export const CandidateResumeList = () => {
+interface CandidateResumeListProps {
+  onSelectResume?: (resume: Resume) => void;
+  selectedResumeId?: string;
+}
+
+export const CandidateResumeList = ({
+  onSelectResume,
+  selectedResumeId,
+}: CandidateResumeListProps) => {
   const [userId, setUserId] = useState<string | null>(null);
   const [resumes, setResumes] = useState<Resume[]>([]);
   const [loading, setLoading] = useState(true);
   const supabase = createClient();
+
+  const handleViewResume = async (resume: Resume) => {
+    const { data, error } = await supabase.storage
+      .from("resumes")
+      .createSignedUrl(resume.storage_path, 3600); // 1 hour expiry
+
+    if (error) {
+      console.error("Error creating signed URL:", error);
+      return;
+    }
+
+    window.open(data.signedUrl, "_blank");
+  };
 
   useEffect(() => {
     const getUser = async () => {
@@ -125,19 +146,31 @@ export const CandidateResumeList = () => {
       ) : (
         <div className="space-y-4">
           {resumes.map((resume) => (
-            <Card key={resume.id}>
+            <Card
+              key={resume.id}
+              className={`cursor-pointer transition-all duration-200 hover:bg-gray-100 bg-gray-50 ${
+                selectedResumeId === resume.id
+                  ? "border-2 border-blue-500 bg-blue-50/30"
+                  : "border border-gray-200"
+              }`}
+              onClick={() => onSelectResume?.(resume)}
+            >
               <CardContent className="pt-6">
                 <div className="flex items-start justify-between">
                   <div className="flex items-start space-x-3">
-                    <div className="flex-shrink-0">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleViewResume(resume);
+                      }}
+                      className="flex-shrink-0 p-1 hover:bg-blue-100 rounded transition-colors"
+                      title="View Resume"
+                    >
                       <FileText className="h-8 w-8 text-blue-500" />
-                    </div>
+                    </button>
                     <div className="flex-1 min-w-0">
                       <h3 className="text-sm font-medium text-gray-900 truncate">
-                        {resume.storage_path
-                          .split("/")
-                          .pop()
-                          ?.replace(/^\d+_/, "") || "Resume"}
+                        {resume.name}
                       </h3>
                       <div className="flex items-center mt-1 space-x-4 text-xs text-gray-500">
                         <div className="flex items-center">

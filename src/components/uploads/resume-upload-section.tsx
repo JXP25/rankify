@@ -7,11 +7,19 @@ import {
   DropzoneEmptyState,
 } from "@/components/uploads/dropzone";
 import { createClient } from "@/lib/supabase/client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 
-export function ResumeUploadSection() {
+interface ResumeUploadSectionProps {
+  onFilePreview?: (file: File | null) => void;
+}
+
+export function ResumeUploadSection({
+  onFilePreview,
+}: ResumeUploadSectionProps) {
   const [userId, setUserId] = useState<string | null>(null);
   const supabase = createClient();
+  const previousFilesLength = useRef(0);
+  const lastProcessedSuccess = useRef<string | null>(null);
 
   useEffect(() => {
     const getUser = async () => {
@@ -25,25 +33,27 @@ export function ResumeUploadSection() {
     getUser();
   }, [supabase.auth]);
 
-  const handleUploadSuccess = async (fileName: string) => {
-    if (!userId) return;
+  const handleUploadSuccess = useCallback(
+    async (fileName: string, uploadPath: string) => {
+      if (!userId) return;
 
-    try {
-      const storagePath = `candidate-uploads/${userId}/${fileName}`;
+      try {
+        const { error } = await supabase.from("resumes").insert({
+          user_id: userId,
+          name: fileName,
+          storage_path: uploadPath,
+          status: "PENDING",
+        });
 
-      const { error } = await supabase.from("resumes").insert({
-        user_id: userId,
-        storage_path: storagePath,
-        status: "PENDING",
-      });
-
-      if (error) {
-        console.error("Error saving resume metadata:", error);
+        if (error) {
+          console.error("Error saving resume metadata:", error);
+        }
+      } catch (error) {
+        console.error("Error handling upload success:", error);
       }
-    } catch (error) {
-      console.error("Error handling upload success:", error);
-    }
-  };
+    },
+    [userId, supabase],
+  );
 
   const props = useSupabaseUpload({
     bucketName: "resumes",
@@ -54,11 +64,39 @@ export function ResumeUploadSection() {
   });
 
   useEffect(() => {
-    if (props.isSuccess && props.successes.length > 0) {
-      const fileName = props.successes[0];
-      handleUploadSuccess(fileName);
+    if (props.files.length > 0) {
+      const file = props.files[0];
+      if (file.errors.length === 0) {
+        onFilePreview?.(file);
+      } else {
+        onFilePreview?.(null);
+      }
+    } else if (previousFilesLength.current > 0) {
+      onFilePreview?.(null);
     }
-  }, [props.isSuccess, props.successes, userId, handleUploadSuccess]);
+
+    previousFilesLength.current = props.files.length;
+  }, [props.files, onFilePreview]);
+
+  // Handle successful upload
+  useEffect(() => {
+    if (props.isSuccess && props.successes.length > 0) {
+      const currentSuccess = props.successes[0];
+
+      if (currentSuccess !== lastProcessedSuccess.current) {
+        lastProcessedSuccess.current = currentSuccess;
+        const successData = JSON.parse(currentSuccess);
+        handleUploadSuccess(successData.name, successData.uploadPath);
+        onFilePreview?.(null);
+      }
+    }
+  }, [props.isSuccess, props.successes, handleUploadSuccess, onFilePreview]);
+
+  useEffect(() => {
+    if (!props.isSuccess && props.successes.length === 0) {
+      lastProcessedSuccess.current = null;
+    }
+  }, [props.isSuccess, props.successes]);
 
   return (
     <Dropzone {...props}>

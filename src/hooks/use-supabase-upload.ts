@@ -133,16 +133,24 @@ const useSupabaseUpload = (options: UseSupabaseUploadOptions) => {
 
     const responses = await Promise.all(
       filesToUpload.map(async (file) => {
+        // Use simple timestamp for storage filename
+        const timestamp = Date.now();
+        const fileExtension = file.name.split(".").pop();
+        const timestampedName = `${timestamp}.${fileExtension}`;
+        const uploadPath = !!path
+          ? `${path}/${timestampedName}`
+          : timestampedName;
+
         const { error } = await supabase.storage
           .from(bucketName)
-          .upload(!!path ? `${path}/${file.name}` : file.name, file, {
+          .upload(uploadPath, file, {
             cacheControl: cacheControl.toString(),
             upsert,
           });
         if (error) {
           return { name: file.name, message: error.message };
         } else {
-          return { name: file.name, message: undefined };
+          return { name: file.name, message: undefined, uploadPath };
         }
       }),
     );
@@ -153,7 +161,12 @@ const useSupabaseUpload = (options: UseSupabaseUploadOptions) => {
 
     const responseSuccesses = responses.filter((x) => x.message === undefined);
     const newSuccesses = Array.from(
-      new Set([...successes, ...responseSuccesses.map((x) => x.name)]),
+      new Set([
+        ...successes,
+        ...responseSuccesses.map((x) =>
+          JSON.stringify({ name: x.name, uploadPath: x.uploadPath }),
+        ),
+      ]),
     );
     setSuccesses(newSuccesses);
 

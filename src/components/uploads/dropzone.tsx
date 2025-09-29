@@ -292,7 +292,12 @@ const DropzoneEmptyState = ({ className }: { className?: string }) => {
         <p className="text-xs text-muted-foreground">
           Drag and drop or{" "}
           <a
-            onClick={() => inputRef.current?.click()}
+            onClick={() => {
+              if (inputRef.current) {
+                inputRef.current.value = "";
+                inputRef.current.click();
+              }
+            }}
             className="underline cursor-pointer transition hover:text-foreground"
           >
             select file
