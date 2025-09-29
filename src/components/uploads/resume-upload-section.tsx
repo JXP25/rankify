@@ -58,7 +58,7 @@ export function ResumeUploadSection() {
       const fileName = props.successes[0];
       handleUploadSuccess(fileName);
     }
-  }, [props.isSuccess, props.successes, userId]);
+  }, [props.isSuccess, props.successes, userId, handleUploadSuccess]);
 
   return (
     <Dropzone {...props}>

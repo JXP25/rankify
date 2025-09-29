@@ -10,6 +10,7 @@ import {
   useCallback,
   useContext,
   useState,
+  useEffect,
 } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
@@ -59,12 +60,11 @@ const useAuthCheck = () => {
         .single();
 
       if (!profile) {
-        // User exists but no profile, redirect to onboarding
         router.push("/onboarding");
         return false;
       }
 
-      return true; // User is authenticated and has profile
+      return true;
     } catch (error) {
       console.error("Auth check failed:", error);
       router.push("/auth/sign-up");
@@ -133,9 +133,11 @@ const DropzoneContent = ({ className }: { className?: string }) => {
     errors,
     maxFileSize,
     isSuccess,
+    resetUpload,
   } = useDropzoneContext();
 
   const { checkAuthAndRedirect, isChecking } = useAuthCheck();
+  const [countdown, setCountdown] = useState<number | null>(null);
   const file = files[0];
 
   const handleRemoveFile = useCallback(() => {
@@ -149,16 +151,43 @@ const DropzoneContent = ({ className }: { className?: string }) => {
     }
   }, [checkAuthAndRedirect, onUpload]);
 
+  useEffect(() => {
+    if (isSuccess && countdown === null) {
+      setCountdown(5);
+    }
+  }, [isSuccess, countdown]);
+
+  useEffect(() => {
+    if (countdown !== null && countdown > 0) {
+      const timer = setTimeout(() => {
+        setCountdown(countdown - 1);
+      }, 1000);
+      return () => clearTimeout(timer);
+    } else if (countdown === 0) {
+      if (resetUpload) {
+        resetUpload();
+      }
+      setCountdown(null);
+    }
+  }, [countdown, resetUpload]);
+
   if (isSuccess) {
     return (
       <div
         className={cn(
-          "flex flex-row items-center gap-x-2 justify-center",
+          "flex flex-col items-center gap-y-2 justify-center py-4",
           className,
         )}
       >
-        <CheckCircle size={16} className="text-primary" />
-        <p className="text-primary text-sm">Successfully uploaded file</p>
+        <CheckCircle size={20} className="text-primary" />
+        <p className="text-primary text-sm font-medium">
+          Successfully uploaded file
+        </p>
+        {countdown !== null && (
+          <p className="text-xs text-gray-500">
+            Resetting in 00:0{countdown}...
+          </p>
+        )}
       </div>
     );
   }

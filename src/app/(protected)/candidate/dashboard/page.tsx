@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { ResumeUploadSection } from "@/components/uploads/resume-upload-section";
-import { CandidateResumeList } from "@/components/candidate/list";
+import { CandidateResumeList } from "@/components/candidate/resume-list";
 export default async function Dashboard() {
   const supabase = await createClient();
 

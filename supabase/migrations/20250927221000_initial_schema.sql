@@ -40,9 +40,30 @@ ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.resumes ENABLE ROW LEVEL SECURITY;
 
 
--- 4. CREATE RLS POLICIES FOR 'profiles' TABLE
+-- 4. CREATE HELPER FUNCTION FOR ROLE CHECK
+CREATE OR REPLACE FUNCTION public.get_is_reviewer() 
+RETURNS BOOLEAN
+LANGUAGE sql
+SECURITY DEFINER
+STABLE
+AS $$
+  SELECT EXISTS (
+    SELECT 1
+    FROM public.profiles
+    WHERE id = (SELECT auth.uid())::uuid
+      AND role = 'REVIEWER'
+  );
+$$;
+
+-- 5. CREATE RLS POLICIES FOR 'profiles' TABLE
 CREATE POLICY "Users can view their own profile."
 ON public.profiles FOR SELECT USING (auth.uid() = id);
+
+CREATE POLICY "Reviewers can view all profiles." 
+ON public.profiles
+FOR SELECT
+TO authenticated
+USING (public.get_is_reviewer());
 
 CREATE POLICY "Users can update their own profile."
 ON public.profiles FOR UPDATE USING (auth.uid() = id);
@@ -51,7 +72,7 @@ CREATE POLICY "Users can insert their own profile."
 ON public.profiles FOR INSERT WITH CHECK (auth.uid() = id);
 
 
--- 5. CREATE RLS POLICIES FOR 'resumes' TABLE
+-- 6. CREATE RLS POLICIES FOR 'resumes' TABLE
 CREATE POLICY "Users can view their own resumes."
 ON public.resumes FOR SELECT USING (auth.uid() = user_id);
 
@@ -66,14 +87,14 @@ ON public.resumes FOR ALL USING (
 );
 
 
--- 6. SET UP STORAGE BUCKET
+-- 7. SET UP STORAGE BUCKET
 
 -- Insert the 'resumes' bucket into storage.
 -- This makes the bucket private by default.
 INSERT INTO storage.buckets (id, name, public)
 VALUES ('resumes', 'resumes', false);
 
--- 7. CREATE STORAGE POLICIES
+-- 8. CREATE STORAGE POLICIES
 -- Policy: Allow authenticated users to upload files to the 'resumes' bucket.
 CREATE POLICY "Authenticated users can upload resumes."
 ON storage.objects FOR INSERT
