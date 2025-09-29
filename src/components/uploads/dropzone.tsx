@@ -132,19 +132,15 @@ const DropzoneContent = ({ className }: { className?: string }) => {
     successes,
     errors,
     maxFileSize,
-    maxFiles,
     isSuccess,
   } = useDropzoneContext();
 
   const { checkAuthAndRedirect, isChecking } = useAuthCheck();
-  const exceedMaxFiles = files.length > maxFiles;
+  const file = files[0];
 
-  const handleRemoveFile = useCallback(
-    (fileName: string) => {
-      setFiles(files.filter((file) => file.name !== fileName));
-    },
-    [files, setFiles],
-  );
+  const handleRemoveFile = useCallback(() => {
+    setFiles([]);
+  }, [setFiles]);
 
   const handleUpload = useCallback(async () => {
     const isAuthenticated = await checkAuthAndRedirect();
@@ -162,104 +158,75 @@ const DropzoneContent = ({ className }: { className?: string }) => {
         )}
       >
         <CheckCircle size={16} className="text-primary" />
-        <p className="text-primary text-sm">
-          Successfully uploaded {files.length} file{files.length > 1 ? "s" : ""}
-        </p>
+        <p className="text-primary text-sm">Successfully uploaded file</p>
       </div>
     );
   }
 
+  if (!file) {
+    return null;
+  }
+
+  const fileError = errors.find((e) => e.name === file.name);
+  const isSuccessfullyUploaded = !!successes.find((e) => e === file.name);
+
   return (
     <div className={cn("flex flex-col", className)}>
-      {files.map((file, idx) => {
-        const fileError = errors.find((e) => e.name === file.name);
-        const isSuccessfullyUploaded = !!successes.find((e) => e === file.name);
+      <div className="flex items-center gap-x-4 border-b py-2 first:mt-4 last:mb-4">
+        <div className="h-10 w-10 rounded border bg-muted flex items-center justify-center">
+          <File size={18} />
+        </div>
 
-        return (
-          <div
-            key={`${file.name}-${idx}`}
-            className="flex items-center gap-x-4 border-b py-2 first:mt-4 last:mb-4 "
+        <div className="shrink grow flex flex-col items-start truncate">
+          <p title={file.name} className="text-sm truncate max-w-full">
+            {file.name}
+          </p>
+          {file.errors.length > 0 ? (
+            <p className="text-xs text-destructive">
+              {file.errors
+                .map((e) =>
+                  e.message.startsWith("File is larger than")
+                    ? `File is larger than ${formatBytes(
+                        maxFileSize,
+                        2,
+                      )} (Size: ${formatBytes(file.size, 2)})`
+                    : e.message,
+                )
+                .join(", ")}
+            </p>
+          ) : loading && !isSuccessfullyUploaded ? (
+            <p className="text-xs text-muted-foreground">Uploading file...</p>
+          ) : !!fileError ? (
+            <p className="text-xs text-destructive">
+              Failed to upload: {fileError.message}
+            </p>
+          ) : isSuccessfullyUploaded ? (
+            <p className="text-xs text-primary">Successfully uploaded file</p>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              {formatBytes(file.size, 2)}
+            </p>
+          )}
+        </div>
+
+        {!loading && !isSuccessfullyUploaded && (
+          <Button
+            size="icon"
+            variant="link"
+            className="shrink-0 justify-self-end text-muted-foreground hover:text-foreground"
+            onClick={handleRemoveFile}
           >
-            {file.type.startsWith("image/") ? (
-              <div className="h-10 w-10 rounded border overflow-hidden shrink-0 bg-muted flex items-center justify-center">
-                <img
-                  src={file.preview}
-                  alt={file.name}
-                  className="object-cover"
-                />
-              </div>
-            ) : (
-              <div className="h-10 w-10 rounded border bg-muted flex items-center justify-center">
-                <File size={18} />
-              </div>
-            )}
+            <X />
+          </Button>
+        )}
+      </div>
 
-            <div className="shrink grow flex flex-col items-start truncate">
-              <p title={file.name} className="text-sm truncate max-w-full">
-                {file.name}
-              </p>
-              {file.errors.length > 0 ? (
-                <p className="text-xs text-destructive">
-                  {file.errors
-                    .map((e) =>
-                      e.message.startsWith("File is larger than")
-                        ? `File is larger than ${formatBytes(
-                            maxFileSize,
-                            2,
-                          )} (Size: ${formatBytes(file.size, 2)})`
-                        : e.message,
-                    )
-                    .join(", ")}
-                </p>
-              ) : loading && !isSuccessfullyUploaded ? (
-                <p className="text-xs text-muted-foreground">
-                  Uploading file...
-                </p>
-              ) : !!fileError ? (
-                <p className="text-xs text-destructive">
-                  Failed to upload: {fileError.message}
-                </p>
-              ) : isSuccessfullyUploaded ? (
-                <p className="text-xs text-primary">
-                  Successfully uploaded file
-                </p>
-              ) : (
-                <p className="text-xs text-muted-foreground">
-                  {formatBytes(file.size, 2)}
-                </p>
-              )}
-            </div>
-
-            {!loading && !isSuccessfullyUploaded && (
-              <Button
-                size="icon"
-                variant="link"
-                className="shrink-0 justify-self-end text-muted-foreground hover:text-foreground"
-                onClick={() => handleRemoveFile(file.name)}
-              >
-                <X />
-              </Button>
-            )}
-          </div>
-        );
-      })}
-      {exceedMaxFiles && (
-        <p className="text-sm text-left mt-2 text-destructive">
-          You may upload only up to {maxFiles} files, please remove{" "}
-          {files.length - maxFiles} file
-          {files.length - maxFiles > 1 ? "s" : ""}.
-        </p>
-      )}
-      {files.length > 0 && !exceedMaxFiles && (
+      {file && file.errors.length === 0 && (
         <div className="mt-2">
           <Button
             variant="outline"
             onClick={handleUpload}
-            disabled={
-              files.some((file) => file.errors.length !== 0) ||
-              loading ||
-              isChecking
-            }
+            disabled={loading || isChecking}
           >
             {loading ? (
               <>
@@ -272,7 +239,7 @@ const DropzoneContent = ({ className }: { className?: string }) => {
                 Checking...
               </>
             ) : (
-              <>Upload files</>
+              <>Upload file</>
             )}
           </Button>
         </div>
@@ -282,19 +249,16 @@ const DropzoneContent = ({ className }: { className?: string }) => {
 };
 
 const DropzoneEmptyState = ({ className }: { className?: string }) => {
-  const { maxFiles, maxFileSize, inputRef, isSuccess } = useDropzoneContext();
+  const { maxFileSize, inputRef, isSuccess, files } = useDropzoneContext();
 
-  if (isSuccess) {
+  if (isSuccess || files.length > 0) {
     return null;
   }
 
   return (
     <div className={cn("flex flex-col items-center gap-y-2", className)}>
       <Upload size={20} className="text-muted-foreground" />
-      <p className="text-sm">
-        Upload{!!maxFiles && maxFiles > 1 ? ` ${maxFiles}` : ""} file
-        {!maxFiles || maxFiles > 1 ? "s" : ""}
-      </p>
+      <p className="text-sm">Upload file</p>
       <div className="flex flex-col items-center gap-y-1">
         <p className="text-xs text-muted-foreground">
           Drag and drop or{" "}
@@ -302,7 +266,7 @@ const DropzoneEmptyState = ({ className }: { className?: string }) => {
             onClick={() => inputRef.current?.click()}
             className="underline cursor-pointer transition hover:text-foreground"
           >
-            select {maxFiles === 1 ? `file` : "files"}
+            select file
           </a>{" "}
           to upload
         </p>

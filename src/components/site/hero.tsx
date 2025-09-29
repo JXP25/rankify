@@ -16,7 +16,7 @@ export function Hero() {
     path: "test",
     allowedMimeTypes: ["*"],
     maxFiles: 1,
-    maxFileSize: 1000 * 1000 * 2, // 10MB,
+    maxFileSize: 1000 * 1000 * 2, // 2MB,
   });
 
   return (

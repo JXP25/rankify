@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
-import { LogoutButton } from "@/components/ui/logout-button";
 import { createClient } from "@/lib/supabase/server";
-
+import { ResumeUploadSection } from "@/components/uploads/resume-upload-section";
+import { CandidateResumeList } from "@/components/candidate/list";
 export default async function Dashboard() {
   const supabase = await createClient();
 
@@ -11,13 +11,9 @@ export default async function Dashboard() {
   }
 
   return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      {"Candidate Dashboard"}
-      <p>
-        Hello <span>{data.claims.email}</span>
-      </p>
-
-      <LogoutButton />
+    <div className="max-w-4xl mx-auto px-4 py-8 flex flex-col gap-8">
+      <ResumeUploadSection />
+      <CandidateResumeList />
     </div>
   );
 }

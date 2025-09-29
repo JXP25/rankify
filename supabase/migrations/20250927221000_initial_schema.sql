@@ -26,7 +26,7 @@ CREATE TABLE public.resumes (
     storage_path TEXT NOT NULL,
     status public.resume_status NOT NULL DEFAULT 'PENDING'::resume_status,
     notes TEXT,
-    score INT4,
+    score INT4 CHECK (score IS NULL OR (score >= 0 AND score <= 100)),
     reviewed_by UUID REFERENCES public.profiles(id),
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
